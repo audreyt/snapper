@@ -1,0 +1,22 @@
+Name:                snapper
+Version:             0.1
+Synopsis:            Sinatra workalike on Snap framework
+Description:         Project Description Here
+License:             PublicDomain
+Author:              Audrey Tang
+Maintainer:          Audrey Tang <audreyt@audreyt.org>
+Stability:           Experimental
+Category:            Web
+Build-type:          Simple
+Cabal-version:       >= 1.2
+Tested-With:         GHC==6.10.1, GHC==7.0.2
+
+Source-Repository head
+    type: git
+    location: git://github.com/audreyt/snapper.git
+
+library
+    extensions: TemplateHaskell OverloadedStrings FlexibleInstances MultiParamTypeClasses TypeSynonymInstances OverloadedStrings Rank2Types ExistentialQuantification
+    build-depends:   base > 4 && < 5, snap, string-qq
+    hs-source-dirs:  src
+    exposed-modules: Snapper
