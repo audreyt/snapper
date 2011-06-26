@@ -1,0 +1,9 @@
+Micro web application framework built on Haskell's Snap framework: http://snapframework.com/
+
+Features:
+
+* Inline templates
+* Minimalist and expressive syntax
+* Pattern-matching based routing
+
+See Main.hs for a working example.
