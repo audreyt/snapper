@@ -23,7 +23,7 @@ main = snapper routes{ _GET_ = get, _POST_ = post } $ do
 <html><body>
     <a href="hello/1/2/3">Hello</a>
     <a href="say/world">world</a>
-    <a href="echo?message=exclamation">!!!</a>
+    <a href="echo?message=exclamation;foo=bar">!!!</a>
     <hr>
     <form action="add" method="post">
         <input name="x"> + <input name="y"> <input type="submit" value="=">
