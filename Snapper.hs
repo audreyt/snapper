@@ -1,9 +1,15 @@
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances, OverloadedStrings, Rank2Types, ExistentialQuantification #-}
 module Snapper (
-    Routes(..), routes, snapper, html, xhtml, set, sets, hasParam, param, tmpl, text, mime,
+    Routes(..),
+    routes, snapper, html, xhtml,
+    set, sets, hasParam, param, tmpl, text, mime,
+
+    status, header, res, req,
+
     module Snap.Types,
     module Data.String.QQ,
-    module Snap.Util.FileServe
+    module Snap.Util.FileServe,
+    module Control.Applicative
 ) where
 import Snap.Extension.Server
 import Snap.Types
@@ -82,6 +88,11 @@ type Application = SnapExtend ApplicationState
 newtype ApplicationState = ApplicationState { templateState :: HeistState Application }
 
 
+header k v = modifyResponse (addHeader k v)
+
+status :: MonadSnap m => Int -> m ()
+status = modifyResponse . setResponseCode
+
 text :: MonadSnap m => String -> m ()
 text = writeBS . U.fromString
 
@@ -94,3 +105,8 @@ instance HasHeistState Application ApplicationState where
     getHeistState     = templateState
     setHeistState s a = a { templateState = s }
 
+res :: MonadSnap m => (Response -> Response) -> m ()
+res = modifyResponse
+
+req :: MonadSnap m => (Request -> a) -> m a
+req = withRequest . (return .)

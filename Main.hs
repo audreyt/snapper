@@ -1,20 +1,29 @@
 {-# LANGUAGE ExtendedDefaultRules, OverloadedStrings, QuasiQuotes #-}
 import Snapper
 
--- Route definitions
+-- Routes for GET
 get [] = tmpl "main"
+
 get ["say", msg] = do
     set "message" msg
     tmpl "echo"
+
 get ("hello":xs) = do
     mime "text/plain"
     text $ "Hello: " ++ unwords xs
+
 get _ = pass
 
+-- Routes for POST
 post ["add"] = do
+    status 201
+    header "X-Powered-By" "Snapper"
+    res $ addHeader "X-Powered-By" "Snap" -- ditto
+    ua <- req $ getHeader "User-Agent"
     x <- param "x"
     y <- param "y"
     text $ show (x+y)
+
 post _ = pass
 
 main = snapper routes{ _GET_ = get, _POST_ = post } $ do
