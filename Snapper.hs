@@ -23,6 +23,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import qualified Text.XmlHtml as X
 import qualified Control.Monad.Writer as W
+import Snap.Util.Readable
 
 data Routes m = MonadSnap m => Routes
     { _GET_, _POST_, _HEAD_, _DELETE_, _PUT_ :: [String] -> m () }
@@ -72,9 +73,10 @@ hasParam k = do
     x <- getParam k
     return $ maybe False (const True) x
 
+param :: (MonadSnap m, Readable a) => ByteString -> m a
 param k = do
     x <- getParam k
-    return $ maybe "" id x
+    maybe pass fromBS x
 
 type Application = SnapExtend ApplicationState
 newtype ApplicationState = ApplicationState { templateState :: HeistState Application }
