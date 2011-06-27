@@ -5,11 +5,11 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as L
 
 -- Routes for GET
-get [] = tmpl "main"
+get [] = template "main"
 
 get ["say", msg] = do
-    set "message" msg
-    tmpl "echo"
+    var "message" msg
+    template "echo"
 
 get ("hello":xs) = do
     mime "text/plain"

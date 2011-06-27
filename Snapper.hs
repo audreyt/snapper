@@ -2,9 +2,9 @@
 module Snapper (
     Routes(..),
     routes, snapper, html, xhtml,
-    set, sets, hasParam, param, tmpl, text, mime,
+    var, vars, hasParam, param, template, text, mime,
 
-    status, header, res, req, hamlet, h,
+    status, header, res, req, hamlet, h, halt,
 
     module Snap.Types,
     module Data.String.QQ,
@@ -63,8 +63,8 @@ snapper routes templates = quickHttpServe quickInit $ quickSite
         let args = U.toString <$> B.splitWith (== 0x2F) p
         _before_ routes
         case rqMethod req of 
-            GET -> (_GET_ routes) args <|> tmpl (U.toString p) <|> serveDirectory static
-            HEAD -> (_HEAD_ routes) args <|> tmpl (U.toString p) <|> serveDirectory static
+            GET -> (_GET_ routes) args <|> template (U.toString p) <|> serveDirectory static
+            HEAD -> (_HEAD_ routes) args <|> template (U.toString p) <|> serveDirectory static
             POST -> (_POST_ routes) args
             PUT -> (_PUT_ routes) args
             DELETE -> (_DELETE_ routes) args
@@ -86,9 +86,9 @@ xhtml k v = case X.parseXML (U.toString k) v of
     Left err  -> fail err
     Right doc -> W.tell $ M.singleton k (X.docContent doc)
 
-set k v = modifyRequest $ rqSetParam k [U.fromString v]
+var k v = modifyRequest $ rqSetParam k [U.fromString v]
 
-sets kvs = mapM_ (uncurry set) kvs
+vars kvs = mapM_ (uncurry var) kvs
 
 hasParam k = do
     x <- getParam k
@@ -111,7 +111,7 @@ status = modifyResponse . setResponseCode
 text :: MonadSnap m => String -> m ()
 text = writeBS . U.fromString
 
-tmpl name = do
+template name = do
     params <- getParams
     let args = [ (E.decodeUtf8 k, E.decodeUtf8 (B.intercalate " " vs)) | (k, vs) <- M.toList params ]
     heistLocal (bindStrings args) (render $ U.fromString name)
@@ -125,3 +125,6 @@ res = modifyResponse
 
 req :: MonadSnap m => (Request -> a) -> m a
 req = withRequest . (return .)
+
+halt :: MonadSnap m => m ()
+halt = finishWith =<< getResponse
