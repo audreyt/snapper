@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, MultiParamTypeClasses, TypeSynonymInstances, OverloadedStrings, Rank2Types, ExistentialQuantification #-}
 module Snapper (
-    Routes(..),
+    Routes(..), Text,
     routes, snapper, html, xhtml,
     set, var, hasParam, param, template, text,
     contentType,
@@ -12,6 +12,7 @@ module Snapper (
     module Snap.Util.FileServe,
     module Control.Applicative
 ) where
+import StringTable.Atom
 import Snap.Extension.Server
 import Snap.Types
 import Snap.Util.FileServe
@@ -27,6 +28,7 @@ import Snap.Extension
 import Snap.Extension.Heist.Impl
 import Snap.Types
 import Text.Templating.Heist
+import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as E
 import qualified Text.XmlHtml as X
@@ -37,13 +39,17 @@ import Control.Monad.IO.Class (liftIO, MonadIO)
 import qualified Text.Hamlet as H
 import qualified Data.HashTable.IO as HT
 
+import Data.Hashable (Hashable(..))
+instance Hashable Atom where
+    hash = fromAtom
+
 data Routes m = MonadSnap m => Routes
     { _GET_, _POST_, _HEAD_, _DELETE_, _PUT_ :: [String] -> m ()
     , _before_, _after_ :: m ()
     }
 
-contentType :: MonadSnap m => ByteString -> m ()
-contentType = modifyResponse . setContentType
+contentType :: MonadSnap m => Text -> m ()
+contentType = modifyResponse . setContentType . fromText
 
 routes :: MonadSnap m => Routes m
 routes = Routes
@@ -67,7 +73,7 @@ snapper routes templates = quickHttpServe quickInit quickSite
     quickSite = do
         req <- getRequest
         vs <- io $ HT.fromList
-            [ ("_" `T.append` E.decodeUtf8 k, E.decodeUtf8 (B.intercalate " " vs))
+            [ (toAtom k, E.decodeUtf8 (B.intercalate " " vs))
             | (k, vs) <- M.toList $ rqParams req
             ]
         local (\s -> s{ variableState = vs }) $ do
@@ -86,25 +92,25 @@ snapper routes templates = quickHttpServe quickInit quickSite
 h = H.hamlet
 
 hamlet :: ByteString -> H.Html -> W.Writer (M.Map ByteString Template) ()
-hamlet k = html k . B.concat . L.toChunks . H.renderHtml
+hamlet k = html k . E.decodeUtf8 . B.concat . L.toChunks . H.renderHtml
 
-html :: ByteString -> ByteString -> W.Writer (M.Map ByteString Template) ()
-html k v = case X.parseHTML (U.toString k) v of
+html :: ByteString -> Text -> W.Writer (M.Map ByteString Template) ()
+html k v = case X.parseHTML (U.toString k) (fromText v) of
     Left err  -> fail err
     Right doc -> W.tell $ M.singleton k (X.docContent doc)
 
-xhtml :: ByteString -> ByteString -> W.Writer (M.Map ByteString Template) ()
-xhtml k v = case X.parseXML (U.toString k) v of
+xhtml :: ByteString -> Text -> W.Writer (M.Map ByteString Template) ()
+xhtml k v = case X.parseXML (U.toString k) (fromText v) of
     Left err  -> fail err
     Right doc -> W.tell $ M.singleton k (X.docContent doc)
 
-var :: T.Text -> Snapper String
+var :: Atom -> Snapper String
 var key = do
     vs  <- asks variableState
     val <- io $ HT.lookup vs key
     return $ maybe "" T.unpack val
 
-set :: T.Text -> String -> Snapper ()
+set :: Atom -> String -> Snapper ()
 set key val = do
     vs <- asks variableState
     io $ HT.insert vs key (T.pack val)
@@ -113,16 +119,21 @@ hasParam k = do
     x <- getParam k
     return $ maybe False (const True) x
 
-param :: (MonadSnap m, Readable a) => ByteString -> m a
-param k = do
-    x <- getParam k
-    maybe pass fromBS x
+param :: (Show a, Readable a) => Atom -> a -> Snapper a
+param key def = do
+    val <- getParam (fromAtom key)
+    maybe (set key (show def) >> return def) fromBS val
+
+fromText = E.encodeUtf8
 
 type Snapper = SnapExtend SnapperState
 data SnapperState = SnapperState
     { templateState :: !(HeistState Snapper)
-    , variableState :: !(HT.BasicHashTable T.Text T.Text)
+    , variableState :: !(HT.BasicHashTable Atom Text)
     }
+
+instance IsString Atom where
+    fromString = toAtom
 
 header k v = modifyResponse (addHeader k v)
 
@@ -143,11 +154,15 @@ template name = do
     let layoutTemplate = "layout/" `T.append` maybe "default" id layout
     let applyLayout nodes = return [X.Element "apply" [("template", layoutTemplate)] nodes]
         hookLayout state
-            | hasTemplate (E.encodeUtf8 layoutTemplate) state
+            | hasTemplate (fromText layoutTemplate) state
             = addPreRunHook applyLayout state
             | otherwise
             = state
-    heistLocal (hookLayout . bindStrings args) (render $ U.fromString name)
+    heistLocal (hookLayout . bindStrings [ ("_" `T.append` fromAtom k, v) | (k, v) <- args])
+        (render $ U.fromString name)
+
+instance FromAtom Text where
+    fromAtom = E.decodeUtf8 . fromAtom
 
 instance HasHeistState Snapper SnapperState where
     getHeistState     = templateState
