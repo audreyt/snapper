@@ -151,7 +151,7 @@ template name = do
     vs <- asks variableState
     layout <- io $ HT.lookup vs ""
     args <- io $ HT.toList vs
-    let layoutTemplate = "layout/" `T.append` maybe "default" id layout
+    let layoutTemplate = "layouts/" `T.append` maybe "default" id layout
     let applyLayout nodes = return [X.Element "apply" [("template", layoutTemplate)] nodes]
         hookLayout state
             | hasTemplate (fromText layoutTemplate) state

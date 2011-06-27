@@ -49,7 +49,7 @@ main = snapper routes{ _GET_ = get, _POST_ = post } $ do
     <_result/>
 </form>
 |]
-    html "layout/default" [s|
+    html "layouts/default" [s|
 <html>
   <head>
     <link rel="stylesheet" type="text/css" href="/screen.css" />
