@@ -34,13 +34,19 @@ import Snap.Util.Readable
 import qualified Text.Hamlet as H
 
 data Routes m = MonadSnap m => Routes
-    { _GET_, _POST_, _HEAD_, _DELETE_, _PUT_ :: [String] -> m () }
+    { _GET_, _POST_, _HEAD_, _DELETE_, _PUT_ :: [String] -> m ()
+    , _before_, _after_ :: m ()
+    }
 
 mime :: MonadSnap m => ByteString -> m ()
 mime = modifyResponse . setContentType
 
 routes :: MonadSnap m => Routes m
-routes = Routes (const pass) (const pass) (const pass) (const pass) (const pass)
+routes = Routes
+    nil nil nil nil nil
+    (return ()) (return ())
+    where
+    nil = const pass
 
 snapper routes templates = quickHttpServe quickInit $ quickSite
     where
@@ -55,6 +61,7 @@ snapper routes templates = quickHttpServe quickInit $ quickSite
         req <- getRequest
         p <- (maybe pass return . urlDecode . rqPathInfo) req
         let args = U.toString <$> B.splitWith (== 0x2F) p
+        _before_ routes
         case rqMethod req of 
             GET -> (_GET_ routes) args <|> tmpl (U.toString p) <|> serveDirectory static
             HEAD -> (_HEAD_ routes) args <|> tmpl (U.toString p) <|> serveDirectory static
@@ -62,6 +69,7 @@ snapper routes templates = quickHttpServe quickInit $ quickSite
             PUT -> (_PUT_ routes) args
             DELETE -> (_DELETE_ routes) args
             _ -> pass
+        _after_ routes
 
 h = H.hamlet
 
