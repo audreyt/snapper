@@ -4,7 +4,7 @@ module Snapper (
     routes, snapper, html, xhtml,
     set, sets, hasParam, param, tmpl, text, mime,
 
-    status, header, res, req,
+    status, header, res, req, hamlet, h,
 
     module Snap.Types,
     module Data.String.QQ,
@@ -17,6 +17,7 @@ import Snap.Util.FileServe
 import Data.String.QQ
 import Data.ByteString (ByteString)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as L
 import Control.Applicative
 import qualified Data.ByteString.UTF8 as U
 import Data.String (IsString(fromString))
@@ -30,6 +31,7 @@ import qualified Data.Text.Encoding as E
 import qualified Text.XmlHtml as X
 import qualified Control.Monad.Writer as W
 import Snap.Util.Readable
+import qualified Text.Hamlet as H
 
 data Routes m = MonadSnap m => Routes
     { _GET_, _POST_, _HEAD_, _DELETE_, _PUT_ :: [String] -> m () }
@@ -60,6 +62,11 @@ snapper routes templates = quickHttpServe quickInit $ quickSite
             PUT -> (_PUT_ routes) args
             DELETE -> (_DELETE_ routes) args
             _ -> pass
+
+h = H.hamlet
+
+hamlet :: ByteString -> H.Html -> W.Writer (M.Map ByteString Template) ()
+hamlet k = html k . B.concat . L.toChunks . H.renderHtml
 
 html :: ByteString -> ByteString -> W.Writer (M.Map ByteString Template) ()
 html k v = case X.parseHTML (U.toString k) v of
