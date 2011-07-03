@@ -1,8 +1,5 @@
 {-# LANGUAGE ExtendedDefaultRules, OverloadedStrings, QuasiQuotes #-}
 import Snapper
-import qualified Text.Hamlet as H
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
 
 -- Routes for GET
 get [] = do
@@ -24,11 +21,11 @@ get _ = pass
 post ["add"] = do
     status 201
     header "X-Powered-By" "Snapper"
-    set "title" "Added"
     res $ addHeader "X-Powered-By" "Snap" -- ditto
     ua <- req $ getHeader "User-Agent"
     x <- param "x" 0
     y <- param "y" 0
+    set "title" "Added"
     set "result" $ show (x+y)
     template "home"
 
